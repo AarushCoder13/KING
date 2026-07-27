@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KING EV - Fast Billing Counter</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+    <header id="shared-header"></header>
+    <div class="w-full max-w-7xl mx-auto flex-1 grid grid-cols-1 md:grid-cols-4 p-4 gap-6 items-start mt-4">
+        <nav id="shared-nav"></nav>
+        <main class="col-span-1 md:col-span-3 p-6 space-y-4 shadow-md">
+            <div>
+                <h2 class="text-xl font-black">Fast Billing Counter</h2>
+                <p class="text-xs text-slate-900">Create smart multi-item digital invoices quickly with automated system taxes lookup features.</p>
+            </div>
+            
+            <form onsubmit="processInvoiceSubmissionLog(event)" class="space-y-4 text-xs">
+                <div class="border-2 border-black rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-black uppercase mb-1">Customer Search / Auto-fill</label>
+                        <select id="billing-customer-lookup" onchange="autofillCustomerBillingData()" class="w-full rounded-lg p-2 font-bold focus:outline-none">
+                            <option value="">-- Click to search old customer lookup list --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-black uppercase mb-1">Customer Full Name</label>
+                        <input type="text" id="billing-name" required class="w-full rounded-lg p-2 font-bold focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-black uppercase mb-1">Phone Number</label>
+                        <input type="text" id="billing-phone" required class="w-full rounded-lg p-2 font-bold focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="border-2 border-black rounded-xl p-4 space-y-3">
+                    <h3 class="font-black uppercase"><i class="fa-solid fa-list"></i> Invoice Line Items</h3>
+                    <div id="invoice-items-container" class="space-y-2"></div>
+                    <button type="button" onclick="addNewInvoiceRowItem()" class="bg-indigo-900 text-white font-black px-3 py-2 rounded-lg border-2 border-black shadow-md cursor-pointer"><i class="fa-solid fa-plus-circle"></i> Add Additional Item Row</button>
+                </div>
+
+                <div class="bg-indigo-950 border-2 border-black rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="text-lg font-black tracking-wider uppercase text-white">Invoice Total: <span id="grand-total-label" class="text-yellow-400">₹0.00</span></div>
+                    <button type="submit" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black px-6 py-3 rounded-xl border-2 border-black shadow-md uppercase cursor-pointer text-sm"><i class="fa-solid fa-file-check"></i> Generate & Lock Invoice</button>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <script src="global.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            window.renderNavigation('billing');
+            loadCustomerDropdownOptions();
+            addNewInvoiceRowItem();
+        });
+
+        function loadCustomerDropdownOptions() {
+            const lookup = document.getElementById('billing-customer-lookup');
+            if(!lookup) return;
+            AppState.getLeads().forEach(lead => {
+                lookup.innerHTML += `<option value="${lead.phone}" data-name="${lead.name}">${lead.name} (${lead.phone})</option>`;
+            });
+        }
+
+        function autofillCustomerBillingData() {
+            const lookup = document.getElementById('billing-customer-lookup');
+            const selected = lookup.options[lookup.selectedIndex];
+            if(!selected.value) return;
+            document.getElementById('billing-name').value = selected.getAttribute('data-name');
+            document.getElementById('billing-phone').value = selected.value;
+        }
+
+        function addNewInvoiceRowItem() {
+            const container = document.getElementById('invoice-items-container');
+            const rowId = Date.now().toString();
+            
+            let optionsStr = '<option value="">-- Choose Stock Product --</option>';
+            AppState.getStocks().forEach(product => {
+                optionsStr += `<option value="${product.id}" data-price="${product.price}" data-hsn="${product.hsn}" data-gst="${product.gstRate}">${product.name}</option>`;
+            });
+
+            const rowHtml = `
+                <div id="row-${rowId}" class="grid grid-cols-1 sm:grid-cols-5 gap-2 items-center bg-white/20 p-2 rounded-lg border border-black/25">
+                    <select onchange="updateRowItemData('${rowId}')" id="prod-${rowId}" required class="w-full rounded-lg p-1.5 font-bold focus:outline-none">${optionsStr}</select>
+                    <div class="font-black text-center text-black p-1.5 rounded-lg">HSN: <span id="hsn-${rowId}">----</span></div>
+                    <input type="number" id="qty-${rowId}" value="1" min="1" oninput="calculateTotalInvoiceAmounts()" required class="w-full rounded-lg p-1.5 font-bold focus:outline-none text-center">
+                    <div class="font-black text-center text-black p-1.5 rounded-lg">Price: <span id="price-${rowId}">₹0.00</span></div>
+                    <button type="button" onclick="deleteInvoiceRowItem('${rowId}')" class="text-red-700 font-bold hover:text-red-900 text-center cursor-pointer text-sm"><i class="fa-solid fa-trash-can"></i> Remove</button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', rowHtml);
+        }
+
+        function deleteInvoiceRowItem(rowId) {
+            document.getElementById(`row-${rowId}`).remove();
+            calculateTotalInvoiceAmounts();
+        }
+
+        function updateRowItemData(rowId) {
+            const select = document.getElementById(`prod-${rowId}`);
+            const opt = select.options[select.selectedIndex];
+            if(!opt.value) return;
+            document.getElementById(`hsn-${rowId}`).innerText = opt.getAttribute('data-hsn');
+            document.getElementById(`price-${rowId}`).innerText = "₹" + parseFloat(opt.getAttribute('data-price')).toLocaleString('en-IN');
+            calculateTotalInvoiceAmounts();
+        }
+
+        function calculateTotalInvoiceAmounts() {
+            let grandTotal = 0;
+            const container = document.getElementById('invoice-items-container');
+            const rows = container.querySelectorAll('[id^="row-"]');
+            
+            rows.forEach(row => {
+                const id = row.id.replace('row-', '');
+                const select = document.getElementById(`prod-${id}`);
+                const opt = select.options[select.selectedIndex];
+                const qty = parseInt(document.getElementById(`qty-${id}`).value) || 0;
+                if(opt && opt.value) {
+                    const price = parseFloat(opt.getAttribute('data-price'));
+                    const gst = parseInt(opt.getAttribute('data-gst'));
+                    const subtotal = price * qty;
+                    grandTotal += subtotal + (subtotal * (gst / 100));
+                }
+            });
+            document.getElementById('grand-total-label').innerText = "₹" + grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
+            return grandTotal;
+        }
+
+        function processInvoiceSubmissionLog(event) {
+            event.preventDefault();
+            const total = calculateTotalInvoiceAmounts();
+            if(total === 0) { alert("Please add at least one product asset entry row!"); return; }
+
+            const sales = AppState.getSales();
+            sales.push({
+                id: Date.now().toString(),
+                invoiceNum: "INV-" + Math.floor(100000 + Math.random() * 900000),
+                date: new Date().toISOString().split('T')[0],
+                customerName: document.getElementById('billing-name').value,
+                customerPhone: document.getElementById('billing-phone').value,
+                totalAmount: total
+            });
+            AppState.setSales(sales);
+            alert("🔥 Invoice Processed and Synchronized Successfully!");
+            window.location.href = "sales.html";
+        }
+    </script>
+</body>
+</html>

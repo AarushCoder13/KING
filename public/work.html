@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KING EV - Work Orders & Repair Logs</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="global.js" defer></script>
+</head>
+<body class="min-h-screen flex flex-col font-sans bg-transparent">
+    
+    <header id="shared-header"></header>
+
+    <div class="w-full max-w-7xl mx-auto flex-1 grid grid-cols-1 md:grid-cols-4 gap-6 p-4">
+        <nav id="shared-nav" class="col-span-1 flex flex-col gap-1"></nav>
+
+        <main class="col-span-1 md:col-span-3 p-6 space-y-6 shadow-xl border border-black/20 rounded-3xl bg-white/10 backdrop-blur-md">
+            
+            <div id="mgmt-assignment-box" class="mgmt-only bg-white/20 p-4 border-2 border-black rounded-2xl space-y-3 hidden">
+                <h3 class="text-lg font-black text-black"><i class="fa-solid fa-file-signature"></i> Assign New Repair Work Order</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="text-xs font-bold block mb-1 text-black">Assign Worker:</label>
+                        <select id="assignee-select" class="w-full p-2 rounded-xl border border-black font-extrabold text-black bg-white">
+                            <option value="Aarush">Aarush (Active)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold block mb-1 text-black">Vehicle/Item Info:</label>
+                        <input type="text" id="task-vehicle" placeholder="e.g., Scooter Trot 2.0 (Red)" class="w-full p-2 rounded-xl border border-black font-bold text-black bg-white">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold block mb-1 text-black">Issue Description:</label>
+                        <input type="text" id="task-issue" placeholder="e.g., Brake Pad Replacement" class="w-full p-2 rounded-xl border border-black font-bold text-black bg-white">
+                    </div>
+                </div>
+                <div class="pt-2">
+                    <button onclick="createNewWorkOrder()" class="w-full sm:w-auto px-5 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl font-black border-2 border-black transition-all">
+                        Assign Task & Notify Worker
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white/30 p-4 border-2 border-black rounded-2xl space-y-4">
+                <h3 class="text-lg font-black text-black"><i class="fa-solid fa-calculator"></i> Live Quotation Builder</h3>
+                <div class="relative w-full max-w-xl">
+                    <label class="text-xs font-black block mb-2 text-black">🔍 Search & Select Needed Items from Inventory:</label>
+                    <div onclick="toggleSearchDropdownMenu(event)" class="w-full p-3 bg-white/90 border-2 border-black rounded-xl font-black flex justify-between items-center cursor-pointer select-none shadow-sm">
+                        <span id="dropdown-selected-counter-hint" class="text-xs text-slate-700">Click to choose multiple inventory items...</span>
+                        <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200" id="dropdown-chevron-icon"></i>
+                    </div>
+                    <div id="searchable-dropdown-panel" class="hidden absolute left-0 right-0 top-full mt-2 bg-white/80 backdrop-blur-xl border-2 border-black rounded-xl shadow-2xl z-50 p-3 space-y-2 max-w-xl w-full">
+                        <div class="relative" onclick="event.stopPropagation()">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-700 text-xs"></i>
+                            <input type="text" id="inventory-search-input" onkeyup="filterInventorySearchList()" placeholder="Type item name to filter items list..." class="w-full p-2 pl-8 border-2 border-black rounded-lg bg-white/90 text-xs font-black text-black">
+                        </div>
+                        <div id="dropdown-items-scroller-list" class="max-h-48 overflow-y-auto space-y-1 pt-1" onclick="event.stopPropagation()"></div>
+                        <div class="pt-2 border-t border-black/10 flex justify-end" onclick="event.stopPropagation()">
+                            <button onclick="addAllCheckedItemsToQuotation()" class="px-4 py-1.5 text-xs bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-black border-2 border-black transition-all">
+                                <i class="fa-solid fa-plus"></i> Add Selected to Sheet
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="overflow-x-auto bg-white/40 rounded-xl p-2 border border-black/10 pt-4">
+                    <table class="w-full text-left text-xs font-bold">
+                        <thead>
+                            <tr class="border-b border-black">
+                                <th class="p-2 text-black">Material / Part Name</th>
+                                <th class="p-2 text-black">Qty</th>
+                                <th class="p-2 text-black">Unit Price</th>
+                                <th class="p-2 text-black">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quote-draft-rows">
+                            <tr><td colspan="4" class="p-2 text-center text-slate-600">No items added to draft list.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex justify-between items-center bg-black/5 p-3 rounded-xl border border-black/20">
+                    <span class="text-sm font-black text-black">Total Quote Sum: ₹<span id="quote-total-accumulation">0.00</span></span>
+                    <button onclick="finalizeQuotationTicket()" class="px-4 py-2 bg-sky-500 text-white rounded-xl font-black border-2 border-black">
+                        Generate Quotation Sheet
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <h3 class="text-lg font-black text-black"><i class="fa-solid fa-bars-stashed"></i> Live Active Work Orders Logs</h3>
+                <div id="work-orders-board" class="space-y-4"></div>
+            </div>
+        </main>
+    </div>
+
+    <div class="fixed top-4 right-4 z-50 bg-white/80 backdrop-blur border-2 border-black p-2 rounded-xl shadow-md flex items-center gap-2">
+        <span class="text-xs font-black text-slate-800"><i class="fa-solid fa-signal text-emerald-500 animate-pulse"></i> Whos Online:</span>
+        <select id="global-online-tracker" class="p-1 rounded bg-white text-xs font-extrabold border border-black/40">
+            <option value="Aarush">Aarush (Active)</option>
+        </select>
+    </div>
+
+    <div id="customer-share-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white border-4 border-black w-full max-w-2xl rounded-2xl p-6 shadow-2xl relative flex flex-col gap-4">
+            <div class="flex justify-between items-center border-b-2 border-black pb-3">
+                <span class="text-sm font-black text-slate-600 uppercase tracking-wider"><i class="fa-solid fa-receipt"></i> Official Document Preview</span>
+                <button onclick="closeCustomerQuotationModal()" class="text-black hover:text-red-600 text-lg"><i class="fa-solid fa-circle-xmark"></i></button>
+            </div>
+            <div id="printable-quotation-document-frame" class="bg-slate-50 p-6 border-2 border-black rounded-xl space-y-4 font-sans text-black">
+                <div class="flex justify-between items-start border-b border-black pb-3">
+                    <div>
+                        <h2 class="text-2xl font-black tracking-tighter text-black flex items-center gap-2"><i class="fa-solid fa-bolt text-yellow-500"></i> KING EV</h2>
+                        <p class="text-[11px] text-slate-700 font-bold mt-0.5">Premium EV Sales, Service & Maintenance</p>
+                    </div>
+                    <div class="text-right">
+                        <h3 class="text-lg font-black uppercase text-sky-600 tracking-wider">ESTIMATE SHEET</h3>
+                        <p class="text-[10px] text-slate-600 font-bold">Date: <span id="doc-timestamp-now">--/--/----</span></p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-xs font-bold text-slate-800 border-b border-dashed border-black/20 pb-3">
+                    <div>
+                        <span class="text-[10px] uppercase text-slate-500 block">Job/Vehicle Info:</span>
+                        <span id="doc-vehicle-title" class="font-black text-black text-sm">--</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] uppercase text-slate-500 block">Assigned Advisor:</span>
+                        <span id="doc-technician-title" class="font-black text-black">--</span>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <span class="text-[10px] uppercase text-slate-500 block font-bold">Estimated Work breakdown items:</span>
+                    <div class="border border-black rounded-lg overflow-hidden bg-white">
+                        <table class="w-full text-left text-xs">
+                            <thead>
+                                <tr class="bg-slate-100 border-b border-black font-black text-black">
+                                    <th class="p-2">Description / Material Item</th>
+                                    <th class="p-2 text-center">Qty</th>
+                                    <th class="p-2 text-right">Estimated Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="doc-items-tbody-rows" class="font-bold text-slate-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center bg-sky-50 p-3 rounded-lg border border-sky-200">
+                    <div><p class="text-[10px] text-slate-600 font-bold italic">*This estimate layout lists dynamic parts configuration costing structures.</p></div>
+                    <div class="text-right">
+                        <span class="text-xs font-bold text-slate-700 block uppercase">Net Grand Total:</span>
+                        <span class="text-xl font-black text-black">₹<span id="doc-net-sum-total">0.00</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <button onclick="triggerSystemDocumentPrint()" class="p-2 text-xs font-black bg-slate-900 text-white rounded-xl hover:bg-black transition-all"><i class="fa-solid fa-print"></i> Local Desktop Print</button>
+                <button onclick="triggerWhatsAppShareLink()" class="p-2 text-xs font-black bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all"><i class="fa-brands fa-whatsapp"></i> Share Over WhatsApp</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dynamicQuotationItems = [];
+        let globalSelectedSharingTaskObj = null;
+        const API_BASE = "https://king.aarushsketch.workers.dev";
+        
+        async function loadActiveWorkersDirectly() {
+            try {
+                const res = await fetch(`${API_BASE}/api/attendance`);
+                const workers = await res.json();
+                const assigneeSelect = document.getElementById('assignee-select');
+                const onlineTracker = document.getElementById('global-online-tracker');
+                if (!Array.isArray(workers) || workers.length === 0) return;
+                let selectHTML = workers.map(name => `<option value="${name}">${name} (Active)</option>`).join('');
+                if (assigneeSelect) assigneeSelect.innerHTML = selectHTML;
+                if (onlineTracker) onlineTracker.innerHTML = selectHTML;
+            } catch (e) { console.error("Attendance Sync Failed:", e); }
+        }
+
+        // ☁️ 1. BOOT SEQUENCE: Download from cloud only ONCE when page opens
+        async function initialCloudSync() {
+            try {
+                const res = await fetch(`${API_BASE}/api/tasks?t=${Date.now()}`, { cache: 'no-store' });
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    localStorage.setItem('biz_tasks', JSON.stringify(data));
+                }
+            } catch(e) { console.log("Using local offline backup"); }
+            
+            renderWorkOrdersLayout(); // Draw the screen
+        }
+
+        // ☁️ 2. INSTANT READ: Get data instantly from local memory
+        function getTasks() {
+            try { return JSON.parse(localStorage.getItem('biz_tasks')) || []; } 
+            catch(e) { return []; }
+        }
+
+        // ☁️ 3. INSTANT SAVE: Draw to screen immediately, then back up to cloud invisibly
+        function saveTasks(arr) {
+            localStorage.setItem('biz_tasks', JSON.stringify(arr)); 
+            renderWorkOrdersLayout(); 
+
+            fetch(`${API_BASE}/api/tasks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(arr)
+            }).catch(e => console.error("Cloud Save Failed:", e));
+        }
+
+        function populateInventoryChoices() {
+            const listContainer = document.getElementById('dropdown-items-scroller-list');
+            if(!listContainer) return;
+            const stockData = window.AppState ? window.AppState.getStocks() : [];
+            if(stockData.length === 0) { listContainer.innerHTML = `<p class="text-xs font-bold text-red-600 p-2">No available inventory items synced.</p>`; return; }
+            listContainer.innerHTML = stockData.map(item => `
+                <div class="dropdown-item-row flex items-center justify-between p-2 hover:bg-black/5 rounded-lg transition-all cursor-pointer border border-transparent" onclick="event.stopPropagation()">
+                    <label class="flex items-center gap-3 cursor-pointer select-none text-xs font-black text-black flex-1 py-1">
+                        <input type="checkbox" name="quote-stock-check" value="${item.id}" data-price="${item.price}" data-name="${item.name}" onchange="updateSelectedItemsCountHint()" class="w-4 h-4 accent-sky-500 cursor-pointer">
+                        <span>${item.name} <span class="text-slate-600 font-extrabold">(₹${item.price.toFixed(2)})</span></span>
+                    </label>
+                    <div class="flex items-center gap-1" onclick="event.stopPropagation()">
+                        <span class="text-[10px] text-slate-700 mr-1 font-bold">Qty:</span>
+                        <input type="number" id="qty-input-${item.id}" value="1" min="1" max="${item.quantity}" class="w-12 p-1 text-center rounded border border-black text-xs font-black bg-white text-black">
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleSearchDropdownMenu(event) {
+            event.stopPropagation();
+            const panel = document.getElementById('searchable-dropdown-panel');
+            const chevron = document.getElementById('dropdown-chevron-icon');
+            if (panel.classList.contains('hidden')) { panel.classList.remove('hidden'); chevron.style.transform = 'rotate(180deg)'; document.getElementById('inventory-search-input').focus();
+            } else { closeSearchDropdownMenu(); }
+        }
+
+        function closeSearchDropdownMenu() {
+            const panel = document.getElementById('searchable-dropdown-panel');
+            const chevron = document.getElementById('dropdown-chevron-icon');
+            if(panel) panel.classList.add('hidden');
+            if(chevron) chevron.style.transform = 'rotate(0deg)';
+        }
+
+        document.addEventListener('click', () => closeSearchDropdownMenu());
+
+        function filterInventorySearchList() {
+            const query = document.getElementById('inventory-search-input').value.toLowerCase();
+            const rows = document.querySelectorAll('.dropdown-item-row');
+            rows.forEach(row => { row.style.display = row.innerText.toLowerCase().includes(query) ? 'flex' : 'none'; });
+        }
+
+        function updateSelectedItemsCountHint() {
+            const checkedBoxes = document.querySelectorAll('input[name="quote-stock-check"]:checked');
+            const hint = document.getElementById('dropdown-selected-counter-hint');
+            if(checkedBoxes.length === 0) { hint.innerHTML = "Click to choose multiple inventory items..."; hint.className = "text-xs text-slate-700 font-black";
+            } else { hint.innerHTML = `✔️ Selected ${checkedBoxes.length} item(s) from inventory list`; hint.className = "text-xs text-sky-600 font-black"; }
+        }
+
+        function addAllCheckedItemsToQuotation() {
+            const checkedBoxes = document.querySelectorAll('input[name="quote-stock-check"]:checked');
+            if(checkedBoxes.length === 0) { alert("❌ Please check at least one item first!"); return; }
+            checkedBoxes.forEach(cb => {
+                const itemId = cb.value; const itemName = cb.getAttribute('data-name'); const price = parseFloat(cb.getAttribute('data-price')) || 0;
+                const qtyInput = document.getElementById(`qty-input-${itemId}`); const qty = parseInt(qtyInput.value) || 1;
+                const existingItem = dynamicQuotationItems.find(item => item.name === itemName);
+                if (existingItem) { existingItem.qty += qty; } else { dynamicQuotationItems.push({ name: itemName, qty: qty, price: price }); }
+                cb.checked = false; qtyInput.value = "1";
+            });
+            updateSelectedItemsCountHint(); renderQuotationDraftTable(); closeSearchDropdownMenu();
+        }
+
+        function renderQuotationDraftTable() {
+            const tbody = document.getElementById('quote-draft-rows');
+            const totalEl = document.getElementById('quote-total-accumulation');
+            if(!tbody) return;
+            if(dynamicQuotationItems.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="p-2 text-center text-slate-600">No items added to draft list.</td></tr>`; if(totalEl) totalEl.innerHTML = "0.00"; return; }
+            let netSum = 0;
+            tbody.innerHTML = dynamicQuotationItems.map((item, index) => {
+                let currentItemTotal = item.qty * item.price; netSum += currentItemTotal;
+                return `
+                    <tr class="border-b border-black/10 bg-white/70 hover:bg-white/90 transition-all">
+                        <td class="p-3 text-black font-black">${item.name}</td>
+                        <td class="p-3 text-black font-black">${item.qty} units</td>
+                        <td class="p-3 text-black font-black">₹${item.price.toFixed(2)}</td>
+                        <td class="p-3 flex justify-between items-center text-black font-black">
+                            <span>₹${currentItemTotal.toFixed(2)}</span>
+                            <button onclick="dynamicQuotationItems.splice(${index}, 1); renderQuotationDraftTable();" class="text-red-600 hover:text-red-800 bg-transparent border-none cursor-pointer p-1"><i class="fa-solid fa-trash-can text-sm"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            if(totalEl) totalEl.innerHTML = netSum.toFixed(2);
+        }
+
+        function createNewWorkOrder() {
+            const worker = document.getElementById('assignee-select').value;
+            const vehicle = document.getElementById('task-vehicle').value || "General EV Scooter";
+            const issue = document.getElementById('task-issue').value || "General Checkup Maintenance";
+            
+            let tasks = getTasks();
+            tasks.unshift({
+                id: Date.now().toString(), worker: worker, vehicle: vehicle, issue: issue, itemsList: [], quoteSum: 0, status: 'Given to Worker'
+            });
+            saveTasks(tasks); 
+            
+            document.getElementById('task-vehicle').value = ''; document.getElementById('task-issue').value = '';
+        }
+
+        function launchCustomerQuotationShareWindow(taskId) {
+            const tasks = getTasks();
+            const target = tasks.find(x => x.id === taskId);
+            if (!target) return;
+
+            globalSelectedSharingTaskObj = target;
+            document.getElementById('doc-timestamp-now').innerText = new Date().toLocaleDateString('en-IN');
+            document.getElementById('doc-vehicle-title').innerText = target.vehicle;
+            document.getElementById('doc-technician-title').innerText = target.worker.toUpperCase();
+            document.getElementById('doc-net-sum-total').innerText = target.quoteSum.toFixed(2);
+
+            const rowsContainer = document.getElementById('doc-items-tbody-rows');
+            if (target.itemsList.length === 0) { rowsContainer.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-500">No repair estimate line elements declared.</td></tr>`;
+            } else {
+                rowsContainer.innerHTML = target.itemsList.map(item => `
+                    <tr class="border-b border-black/5"><td class="p-2 font-black">${item.name}</td><td class="p-2 text-center font-bold">${item.qty}</td><td class="p-2 text-right font-black">₹${(item.qty * item.price).toFixed(2)}</td></tr>
+                `).join('');
+            }
+            document.getElementById('customer-share-modal').classList.remove('hidden');
+        }
+
+        function closeCustomerQuotationModal() { document.getElementById('customer-share-modal').classList.add('hidden'); globalSelectedSharingTaskObj = null; }
+        function triggerSystemDocumentPrint() { const printContent = document.getElementById('printable-quotation-document-frame').innerHTML; document.body.innerHTML = `<div style="padding:40px; background:white; color:black;">${printContent}</div>`; window.print(); window.location.reload(); }
+
+        function triggerWhatsAppShareLink() {
+            if (!globalSelectedSharingTaskObj) return;
+            let message = `⚡ *KING EV QUOTATION ESTIMATE* ⚡\n--------------------------------\n*Vehicle/Job:* ${globalSelectedSharingTaskObj.vehicle}\n*Prepared By:* ${globalSelectedSharingTaskObj.worker}\n\n*Estimated Line Items Breakdown:*\n`;
+            globalSelectedSharingTaskObj.itemsList.forEach(i => { message += `• ${i.name} (x${i.qty}) - ₹${(i.qty * i.price).toFixed(2)}\n`; });
+            message += `\n*Estimated Total Cost:* ₹${globalSelectedSharingTaskObj.quoteSum.toFixed(2)}\n--------------------------------\nThank you for choosing KING EV! 🙏`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        function finalizeQuotationTicket() {
+            if (dynamicQuotationItems.length === 0) { alert("❌ Please add items to your draft sheet first!"); return; }
+            let tasks = getTasks();
+            let sum = parseFloat(document.getElementById('quote-total-accumulation').innerHTML) || 0;
+            
+            if (tasks.length > 0) {
+                tasks[0].itemsList = [...dynamicQuotationItems]; tasks[0].quoteSum = sum;
+                if (tasks[0].status === 'Given to Worker' || tasks[0].status === 'Approved by Worker') { tasks[0].status = 'Quotation Sheet Finalized'; }
+                saveTasks(tasks); 
+                alert("✅ Quotation attached directly to your open active repair ticket card!");
+            } else {
+                const currentWorkerName = localStorage.getItem('biz_user_name') || "Staff General";
+                tasks.unshift({
+                    id: Date.now().toString(), worker: currentWorkerName, vehicle: "Walk-In Customer Quotation", issue: "Standalone Parts Estimation", itemsList: [...dynamicQuotationItems], quoteSum: sum, status: 'Quotation Sheet Finalized'
+                });
+                saveTasks(tasks); 
+                alert("📑 Standalone Estimation Quote created successfully below!");
+            }
+            dynamicQuotationItems = []; renderQuotationDraftTable();
+        }
+
+        function triggerWorkerAccept(id) { let tasks = getTasks(); let t = tasks.find(x => x.id === id); if(t) { t.status = 'Approved by Worker'; saveTasks(tasks); } }
+        function triggerCustomerApproval(id) { let tasks = getTasks(); let t = tasks.find(x => x.id === id); if(t) { t.status = 'Approved by Customer (Notified Worker)'; saveTasks(tasks); } }
+        function triggerJobComplete(id) { let tasks = getTasks(); let t = tasks.find(x => x.id === id); if(t) { t.status = 'Job Done (Notified Management)'; saveTasks(tasks); } }
+        function triggerManagementArchive(id) { let tasks = getTasks(); let t = tasks.find(x => x.id === id); if(t) { t.status = 'Settled & Processed (Closed)'; saveTasks(tasks); } }
+
+        function renderWorkOrdersLayout() {
+            const board = document.getElementById('work-orders-board');
+            if(!board) return;
+            const tasks = getTasks(); 
+            const currentRole = window.AppState ? window.AppState.getRole() : 'management';
+
+            if(tasks.length === 0) {
+                board.innerHTML = `<div class="p-6 text-center border-2 border-dashed border-black/20 rounded-xl text-slate-800 font-extrabold bg-white/10">No active work logs or repair tickets listed.</div>`;
+                return;
+            }
+
+            board.innerHTML = tasks.map(t => {
+                let statusColor = "bg-amber-400 text-black";
+                if(t.status.includes('Finalized')) statusColor = "bg-purple-500 text-white shadow-sm";
+                if(t.status.includes('Customer')) statusColor = "bg-sky-500 text-white animate-pulse";
+                if(t.status.includes('Done')) statusColor = "bg-emerald-500 text-white";
+                if(t.status.includes('Closed')) statusColor = "bg-slate-700 text-white opacity-60";
+                let materialsInjectedStr = t.itemsList.length > 0 ? t.itemsList.map(i => `• ${i.name} (x${i.qty})`).join('<br>') : 'No custom stock materials appended yet.';
+
+                return `
+                    <div class="bg-white/40 p-4 border-2 border-black rounded-2xl flex flex-col gap-3 relative shadow-sm">
+                        <div class="flex justify-between items-start border-b border-black/20 pb-2">
+                            <div><h4 class="text-md font-black text-black">${t.vehicle}</h4><p class="text-xs text-slate-900"><i class="fa-solid fa-user-gear"></i> Prepared By / Tech: <span class="underline">${t.worker}</span></p></div>
+                            <span class="px-3 py-1 rounded-full text-xs font-black ${statusColor} border border-black">${t.status}</span>
+                        </div>
+                        <div class="text-xs text-slate-800 space-y-1">
+                            <p class="text-black"><strong>Job Details / Purpose:</strong> ${t.issue}</p>
+                            <p class="bg-white/70 p-2 rounded-lg mt-1 font-mono border border-black/10 text-black"><strong>Items in Quote:</strong><br>${materialsInjectedStr}</p>
+                            <p class="text-sm font-black mt-1 text-black">Total Quote Amount: ₹${t.quoteSum.toFixed(2)}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 pt-2 border-t border-black/10">
+                            <button onclick="launchCustomerQuotationShareWindow('${t.id}')" class="px-3 py-1 text-xs font-black bg-sky-500 text-white rounded-lg border border-black hover:bg-sky-600 transition-all"><i class="fa-solid fa-share-nodes"></i> Print / Share Quote</button>
+                            ${t.status === 'Given to Worker' ? `<button onclick="triggerWorkerAccept('${t.id}')" class="px-3 py-1 text-xs font-black bg-yellow-400 text-black rounded-lg border border-black"><i class="fa-solid fa-check"></i> Accept Work Assignment</button>` : ''}
+                            ${t.status === 'Quotation Sheet Finalized' || t.status === 'Approved by Worker' ? `<button onclick="triggerCustomerApproval('${t.id}')" class="px-3 py-1 text-xs font-black bg-emerald-500 text-white rounded-lg border border-black"><i class="fa-solid fa-signature"></i> Customer Approved It</button>` : ''}
+                            ${t.status === 'Approved by Customer (Notified Worker)' ? `<button onclick="triggerJobComplete('${t.id}')" class="px-3 py-1 text-xs font-black bg-emerald-500 text-white rounded-lg border border-black"><i class="fa-solid fa-circle-check"></i> Mark Job Finished (Tick Option)</button>` : ''}
+                            ${t.status === 'Job Done (Notified Management)' && currentRole === 'management' ? `<button onclick="triggerManagementArchive('${t.id}')" class="px-3 py-1 text-xs font-black bg-purple-600 text-white rounded-lg border border-black"><i class="fa-solid fa-box-archive"></i> Process, Invoice & Closed Ticket</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadActiveWorkersDirectly();
+            initialCloudSync(); 
+            
+            setTimeout(() => {
+                populateInventoryChoices();
+                const currentRole = window.AppState ? window.AppState.getRole() : 'management';
+                const mgmtBox = document.getElementById('mgmt-assignment-box');
+                if(mgmtBox && currentRole === 'management') { mgmtBox.classList.remove('hidden'); }
+            }, 300);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KING EV - Finance Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+    <header id="shared-header"></header>
+    <div class="w-full max-w-7xl mx-auto flex-1 grid grid-cols-1 md:grid-cols-4 p-4 gap-6 items-start mt-4">
+        <nav id="shared-nav"></nav>
+        <main class="col-span-1 md:col-span-3 p-6 space-y-6 shadow-md">
+            <div>
+                <h2 class="text-xl font-black">Finance Dashboard</h2>
+                <p class="text-xs text-slate-900">Centralized accounting matrix and gross profit tracking variables.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="border-2 border-black rounded-xl p-4 bg-white/20">
+                    <p class="text-[10px] font-black uppercase tracking-wider opacity-60">Gross Turnover Metrics</p>
+                    <h3 id="turnover-box" class="text-2xl font-black text-emerald-800">₹0.00</h3>
+                </div>
+                <div class="border-2 border-black rounded-xl p-4 bg-white/20">
+                    <p class="text-[10px] font-black uppercase tracking-wider opacity-60">Locked Invoiced Units</p>
+                    <h3 id="volume-box" class="text-2xl font-black text-indigo-950">0 Transactions</h3>
+                </div>
+                <div class="border-2 border-black rounded-xl p-4 bg-white/20">
+                    <p class="text-[10px] font-black uppercase tracking-wider opacity-60">Average Invoice Value</p>
+                    <h3 id="avg-box" class="text-2xl font-black text-sky-950">₹0.00</h3>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="global.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            window.renderNavigation('finance');
+            calculateFinanceMetrics();
+        });
+
+        function calculateFinanceMetrics() {
+            const sales = AppState.getSales();
+            let totalTurnover = 0;
+            
+            sales.forEach(sale => totalTurnover += parseFloat(sale.totalAmount || 0));
+            
+            const avgValue = sales.length > 0 ? (totalTurnover / sales.length) : 0;
+            
+            document.getElementById('turnover-box').innerText = "₹" + totalTurnover.toLocaleString('en-IN', {minimumFractionDigits: 2});
+            document.getElementById('volume-box').innerText = sales.length + " Invoices";
+            document.getElementById('avg-box').innerText = "₹" + avgValue.toLocaleString('en-IN', {minimumFractionDigits: 2});
+        }
+    </script>
+</body>
+</html>

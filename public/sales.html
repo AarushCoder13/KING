@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KING EV - Sales Log</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+    <header id="shared-header"></header>
+    <div class="w-full max-w-7xl mx-auto flex-1 grid grid-cols-1 md:grid-cols-4 p-4 gap-6 items-start mt-4">
+        <nav id="shared-nav"></nav>
+        <main class="col-span-1 md:col-span-3 p-6 space-y-4 shadow-md">
+            <div>
+                <h2 class="text-xl font-black">Sales Log Dashboard</h2>
+                <p class="text-xs text-slate-900">Master database ledger of all locked client business invoices.</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b-2 border-black">
+                            <th class="p-3">Invoice ID</th>
+                            <th class="p-3">Date</th>
+                            <th class="p-3">Client Profile</th>
+                            <th class="p-3">Contact Relation</th>
+                            <th class="p-3 text-right">Gross Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sales-ledger-rows"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script src="global.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            window.renderNavigation('sales');
+            loadSalesLedgerLogs();
+        });
+
+        function loadSalesLedgerLogs() {
+            const tbody = document.getElementById('sales-ledger-rows');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+
+            const activeSales = AppState.getSales();
+            if(activeSales.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center font-bold text-slate-700 italic">No transactions processed through the billing counter yet.</td></tr>`;
+                return;
+            }
+
+            activeSales.forEach(sale => {
+                tbody.innerHTML += `
+                    <tr class="font-semibold border-b border-black/15">
+                        <td class="p-3 font-black"><i class="fa-solid fa-file-invoice-dollar text-indigo-900"></i> ${sale.invoiceNum}</td>
+                        <td class="p-3">${sale.date}</td>
+                        <td class="p-3 font-extrabold">${sale.customerName}</td>
+                        <td class="p-3 font-mono">${sale.customerPhone}</td>
+                        <td class="p-3 text-right font-black text-emerald-800 text-sm">₹${parseFloat(sale.totalAmount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                    </tr>
+                `;
+            });
+        }
+        window.loadSalesLedgerLogs = loadSalesLedgerLogs;
+    </script>
+</body>
+</html>
