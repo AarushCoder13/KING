@@ -1,0 +1,12 @@
+{
+  "name": "king-ev-dashboard",
+  "version": "1.0.0",
+  "description": "King EV Static Web App",
+  "scripts": {
+    "dev": "serve . -p 3000",
+    "build": "echo 'No build step required for static HTML'"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  }
+}
