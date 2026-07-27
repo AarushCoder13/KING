@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "King EV Static Web App",
   "scripts": {
-    "dev": "serve . -p 3000",
-    "build": "echo 'No build step required for static HTML'"
+    "dev": "serve public -p 3000",
+    "build": "mkdir -p public && cp *.html *.js public/"
   },
   "dependencies": {
     "serve": "^14.2.1"
