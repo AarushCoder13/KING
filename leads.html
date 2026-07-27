@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KING EV - Call List (Leads)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+    <header id="shared-header"></header>
+    <div class="w-full max-w-7xl mx-auto flex-1 grid grid-cols-1 md:grid-cols-4 p-4 gap-6 items-start mt-4">
+        <nav id="shared-nav"></nav>
+        <main class="col-span-1 md:col-span-3 p-6 space-y-4 shadow-md">
+            <div class="flex justify-between items-center border-b-2 border-black pb-3">
+                <div>
+                    <h2 class="text-xl font-black">Call List (Leads)</h2>
+                    <p class="text-xs text-slate-900">Track incoming user inquiries and follow-up profiles.</p>
+                </div>
+                <button onclick="window.toggleModal('lead-modal-window', true)" class="mgmt-only bg-indigo-900 text-white font-black px-4 py-2 rounded-xl text-xs border-2 border-black shadow-md cursor-pointer flex items-center gap-1">
+                    <i class="fa-solid fa-plus-circle"></i> Add New Lead
+                </button>
+            </div>
+            <div id="leads-grid-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+        </main>
+    </div>
+
+    <div id="lead-modal-window" class="hidden fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl border-2 border-black max-w-md w-full space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b-2 border-black pb-2">
+                <h4 class="text-sm font-black uppercase text-black"><i class="fa-solid fa-user-plus"></i> Capture Customer Lead</h4>
+                <button onclick="window.toggleModal('lead-modal-window', false)" class="text-slate-600 hover:text-black cursor-pointer"><i class="fa-solid fa-circle-xmark text-xl"></i></button>
+            </div>
+            <form id="lead-submission-form" onsubmit="saveNewCustomerLead(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-black uppercase mb-1">Customer Full Name</label>
+                    <input type="text" id="lead-name" required class="w-full rounded-lg p-2 font-bold focus:outline-none">
+                </div>
+                <div>
+                    <label class="block font-black uppercase mb-1">Primary Phone Number</label>
+                    <input type="text" id="lead-phone" required class="w-full rounded-lg p-2 font-bold focus:outline-none">
+                </div>
+                <div>
+                    <label class="block font-black uppercase mb-1">Conversation Notes / Interest</label>
+                    <textarea id="lead-notes" rows="3" required class="w-full rounded-lg p-2 font-bold focus:outline-none"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-indigo-700 text-white font-black p-3 rounded-xl border-2 border-black shadow-md cursor-pointer uppercase">Save Lead File</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="global.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            window.renderNavigation('leads');
+            renderLeadsGridCards();
+        });
+
+        function renderLeadsGridCards() {
+            const container = document.getElementById('leads-grid-container');
+            if(!container) return;
+            container.innerHTML = '';
+
+            const activeLeads = AppState.getLeads();
+            if(activeLeads.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-6 font-bold text-slate-800 italic">No incoming leads captured yet.</div>`;
+                return;
+            }
+
+            activeLeads.forEach(lead => {
+                container.innerHTML += `
+                    <div class="border-2 border-black rounded-xl p-4 space-y-2 relative bg-white/10">
+                        <div class="flex justify-between items-start">
+                            <h3 class="text-sm font-black text-indigo-950"><i class="fa-solid fa-user-tie"></i> ${lead.name}</h3>
+                            <button onclick="deleteCustomerLead('${lead.id}')" class="mgmt-only text-red-700 hover:text-red-900 transition-all cursor-pointer text-xs"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                        <p class="text-xs font-black text-slate-900"><i class="fa-solid fa-phone"></i> ${lead.phone}</p>
+                        <div class="bg-white/40 border border-black/20 p-2 rounded-lg text-[11px] font-semibold text-slate-900">${lead.notes}</div>
+                    </div>
+                `;
+            });
+        }
+        window.renderLeadsGridCards = renderLeadsGridCards;
+
+        function saveNewCustomerLead(event) {
+            event.preventDefault();
+            const currentLeads = AppState.getLeads();
+            currentLeads.push({
+                id: Date.now().toString(),
+                name: document.getElementById('lead-name').value,
+                phone: document.getElementById('lead-phone').value,
+                notes: document.getElementById('lead-notes').value
+            });
+            AppState.setLeads(currentLeads);
+            document.getElementById('lead-submission-form').reset();
+            window.toggleModal('lead-modal-window', false);
+            renderLeadsGridCards();
+        }
+
+        function deleteCustomerLead(id) {
+            if(!confirm("Are you sure you want to drop this lead profile?")) return;
+            const filtered = AppState.getLeads().filter(l => l.id !== id);
+            AppState.setLeads(filtered);
+            renderLeadsGridCards();
+        }
+    </script>
+</body>
+</html>

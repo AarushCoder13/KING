@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KING EV - EV Video Factory</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+    <header id="shared-header"></header>
+    <div class="w-full max-w-7xl mx-auto flex-1 grid grid-cols-1 md:grid-cols-4 p-4 gap-6 items-start mt-4">
+        <nav id="shared-nav"></nav>
+        <main class="col-span-1 md:col-span-3 p-6 space-y-4 shadow-md">
+            
+            <div class="border-2 border-black rounded-xl p-4 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="w-full sm:max-w-md relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-700"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="video-vault-search" oninput="loadVideoVaultEntriesFromStorage()" placeholder="Search edits by car or bike name..." class="w-full py-2.5 pl-10 pr-4 text-sm font-bold focus:outline-none">
+                </div>
+                <button onclick="window.toggleModal('video-log-modal-window', true)" class="mgmt-only w-full sm:w-auto bg-indigo-900 hover:bg-indigo-950 text-white font-black px-5 py-2.5 rounded-xl text-xs border-2 border-black flex items-center justify-center gap-2 shadow-md cursor-pointer">
+                    <i class="fa-solid fa-plus-circle"></i> Add Video Entry
+                </button>
+            </div>
+
+            <div class="border-2 border-black rounded-xl p-5 shadow-sm">
+                <div class="border-b-2 border-black pb-2 mb-4"><h3 class="text-base font-black uppercase text-indigo-950"><i class="fa-solid fa-photo-film"></i> Stock of Edits</h3></div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b-2 border-black">
+                                <th class="p-3 w-1/2">Video Title Name</th>
+                                <th class="p-3 w-1/3">Vehicle Model Name (Car / Bike)</th>
+                                <th class="mgmt-only p-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="video-vault-storage-rows"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="video-log-modal-window" class="hidden fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl border-2 border-black max-w-md w-full space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b-2 border-black pb-2">
+                <h4 class="text-sm font-black uppercase text-black"><i class="fa-solid fa-video-camera"></i> Log Completed Video Edit</h4>
+                <button onclick="window.toggleModal('video-log-modal-window', false)" class="text-slate-600 hover:text-black cursor-pointer"><i class="fa-solid fa-circle-xmark text-xl"></i></button>
+            </div>
+            <form id="vault-video-submission-form" onsubmit="saveNewVideoAssetToVaultLogs(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-black uppercase mb-1">Video Title Name</label>
+                    <input type="text" id="form-video-title" required class="w-full rounded-lg p-2.5 text-sm font-bold focus:outline-none">
+                </div>
+                <div>
+                    <label class="block font-black uppercase mb-1">Select Bike or Car Item</label>
+                    <select id="form-video-stock-relation" class="w-full rounded-lg p-2.5 text-sm font-bold focus:outline-none"></select>
+                </div>
+                <button type="submit" class="w-full bg-indigo-700 text-white font-black p-3 rounded-xl border-2 border-black shadow-md text-sm cursor-pointer uppercase">Save Edit to Vault Log</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="global.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            window.renderNavigation('edits');
+            loadInventoryDropdownOptions();
+            loadVideoVaultEntriesFromStorage();
+        });
+
+        function loadInventoryDropdownOptions() {
+            const modalDropdown = document.getElementById('form-video-stock-relation');
+            if (!modalDropdown) return;
+            modalDropdown.innerHTML = '';
+            AppState.getStocks().forEach(vehicle => {
+                modalDropdown.innerHTML += `<option value="${vehicle.id}">${vehicle.name}</option>`;
+            });
+        }
+
+        function loadVideoVaultEntriesFromStorage() {
+            const tableBody = document.getElementById('video-vault-storage-rows');
+            const searchInput = document.getElementById('video-vault-search');
+            const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : "";
+            
+            if(!tableBody) return;
+            tableBody.innerHTML = '';
+            
+            const savedVideosArray = JSON.parse(localStorage.getItem('biz_campaign_videos')) || [];
+            const filteredVideos = savedVideosArray.filter(v => v.vehicle.toLowerCase().includes(searchQuery));
+
+            if (filteredVideos.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center font-bold text-slate-700 italic">No completed vehicle edits found matching your search parameters.</td></tr>`;
+                return;
+            }
+
+            filteredVideos.forEach(video => {
+                tableBody.innerHTML += `
+                    <tr class="border-b border-black/15 font-semibold">
+                        <td class="p-3 font-extrabold text-sm"><i class="fa-solid fa-clapperboard text-indigo-900 mr-1.5"></i> ${video.title}</td>
+                        <td class="p-3 font-extrabold text-sm"><i class="fa-solid fa-car-side text-sky-700 mr-1.5"></i> ${video.vehicle}</td>
+                        <td class="mgmt-only p-3 text-center">
+                            <button onclick="eraseVideoEntryFromLogs('${video.id}')" class="bg-red-500/20 text-red-700 font-black px-2.5 py-1 rounded-lg border border-red-600/30 text-xs hover:bg-red-600 hover:text-white transition-all cursor-pointer">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        window.loadVideoVaultEntriesFromStorage = loadVideoVaultEntriesFromStorage;
+
+        function saveNewVideoAssetToVaultLogs(event) {
+            event.preventDefault();
+            const title = document.getElementById('form-video-title').value;
+            const selectNode = document.getElementById('form-video-stock-relation');
+            const vehicle = selectNode.options[selectNode.selectedIndex] ? selectNode.options[selectNode.selectedIndex].text : "General EV";
+
+            let savedVideosArray = JSON.parse(localStorage.getItem('biz_campaign_videos')) || [];
+            savedVideosArray.push({ id: Date.now().toString(), title: title, vehicle: vehicle });
+            
+            localStorage.setItem('biz_campaign_videos', JSON.stringify(savedVideosArray));
+            pushDataToCloudflare("edits", savedVideosArray);
+            
+            document.getElementById('vault-video-submission-form').reset();
+            window.toggleModal('video-log-modal-window', false);
+            loadVideoVaultEntriesFromStorage();
+        }
+
+        function eraseVideoEntryFromLogs(id) {
+            if(!confirm("Are you sure you want to delete this edit item from your stock logs?")) return;
+            let savedVideosArray = JSON.parse(localStorage.getItem('biz_campaign_videos')) || [];
+            savedVideosArray = savedVideosArray.filter(v => v.id !== id);
+            localStorage.setItem('biz_campaign_videos', JSON.stringify(savedVideosArray));
+            pushDataToCloudflare("edits", savedVideosArray);
+            loadVideoVaultEntriesFromStorage();
+        }
+    </script>
+</body>
+</html>

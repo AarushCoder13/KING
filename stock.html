@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KING EV - Stock Inventory</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<body class="min-h-screen flex flex-col font-sans">
+    <header id="shared-header"></header>
+    <div class="w-full max-w-7xl mx-auto flex-1 grid grid-cols-1 md:grid-cols-4 p-4 gap-6 items-start mt-4">
+        <nav id="shared-nav"></nav>
+        <main class="col-span-1 md:col-span-3 p-6 space-y-4 shadow-md">
+            <div class="flex justify-between items-center border-b-2 border-black pb-3">
+                <div>
+                    <h2 class="text-xl font-black">Stock Inventory</h2>
+                    <p class="text-xs text-slate-900">Live storage quantities with unified HSN and tax structures.</p>
+                </div>
+                <button onclick="window.toggleModal('stock-modal-window', true)" class="mgmt-only bg-indigo-900 text-white font-black px-4 py-2 rounded-xl text-xs border-2 border-black shadow-md cursor-pointer flex items-center gap-1">
+                    <i class="fa-solid fa-plus"></i> Add New Stock
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b-2 border-black">
+                            <th class="p-3">Item Name</th>
+                            <th class="p-3">HSN Code</th>
+                            <th class="p-3">Quantity Available</th>
+                            <th class="p-3">Unit Price</th>
+                            <th class="p-3">Tax Bracket</th>
+                            <th class="mgmt-only p-3 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-table-rows"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="stock-modal-window" class="hidden fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl border-2 border-black max-w-md w-full space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b-2 border-black pb-2">
+                <h4 class="text-sm font-black uppercase text-black"><i class="fa-solid fa-boxes-stacked"></i> Add Stock Catalog</h4>
+                <button onclick="window.toggleModal('stock-modal-window', false)" class="text-slate-600 hover:text-black cursor-pointer"><i class="fa-solid fa-circle-xmark text-xl"></i></button>
+            </div>
+            <form id="stock-submission-form" onsubmit="saveNewInventoryAsset(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-black uppercase mb-1">Product Model Name</label>
+                    <input type="text" id="stock-name" required class="w-full rounded-lg p-2 font-bold focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-black uppercase mb-1">HSN Code</label>
+                        <input type="text" id="stock-hsn" required class="w-full rounded-lg p-2 font-bold focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-black uppercase mb-1">GST Rate (%)</label>
+                        <select id="stock-gst" class="w-full rounded-lg p-2 font-bold focus:outline-none">
+                            <option value="0">0% Exempt</option>
+                            <option value="5">5% EV Rate</option>
+                            <option value="12">12% Parts</option>
+                            <option value="18">18% Standard</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-black uppercase mb-1">Quantity</label>
+                        <input type="number" id="stock-qty" required min="1" class="w-full rounded-lg p-2 font-bold focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-black uppercase mb-1">Unit Base Rate (₹)</label>
+                        <input type="number" id="stock-price" required step="0.01" class="w-full rounded-lg p-2 font-bold focus:outline-none">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-indigo-700 text-white font-black p-3 rounded-xl border-2 border-black shadow-md cursor-pointer uppercase">Save Item to Inventory</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="global.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            window.renderNavigation('stock');
+            loadInventoryTableRows();
+        });
+
+        // Dynamic table structural population
+        function loadInventoryTableRows() {
+            const tableBody = document.getElementById('inventory-table-rows');
+            if (!tableBody) return;
+            tableBody.innerHTML = '';
+            
+            AppState.getStocks().forEach(item => {
+                tableBody.innerHTML += `
+                    <tr class="font-semibold border-b border-black/15">
+                        <td class="p-3 font-extrabold text-sm">${item.name}</td>
+                        <td class="p-3">${item.hsn}</td>
+                        <td class="p-3"><span class="bg-indigo-950 text-white px-2 py-0.5 rounded text-[11px] font-black border border-black">${item.quantity} units</span></td>
+                        <td class="p-3 font-black">₹${parseFloat(item.price).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                        <td class="p-3"><span class="font-black">${item.gstRate}%</span></td>
+                        <td class="mgmt-only p-3 text-center">
+                            <button onclick="removeInventoryItem('${item.id}')" class="text-red-700 hover:text-red-900 transition-all cursor-pointer text-sm px-2"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        window.loadInventoryTableRows = loadInventoryTableRows;
+
+        function saveNewInventoryAsset(event) {
+            event.preventDefault();
+            const currentStocks = AppState.getStocks();
+            currentStocks.push({
+                id: Date.now().toString(),
+                name: document.getElementById('stock-name').value,
+                hsn: document.getElementById('stock-hsn').value,
+                gstRate: parseInt(document.getElementById('stock-gst').value),
+                quantity: parseInt(document.getElementById('stock-qty').value),
+                price: parseFloat(document.getElementById('stock-price').value),
+                taxType: 'LOCAL'
+            });
+            AppState.setStocks(currentStocks);
+            document.getElementById('stock-submission-form').reset();
+            window.toggleModal('stock-modal-window', false);
+            loadInventoryTableRows();
+        }
+
+        function removeInventoryItem(id) {
+            if (!confirm("Are you sure you want to remove this catalog line item?")) return;
+            const remaining = AppState.getStocks().filter(item => item.id !== id);
+            AppState.setStocks(remaining);
+            loadInventoryTableRows();
+        }
+    </script>
+</body>
+</html>
