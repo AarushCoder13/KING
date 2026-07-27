@@ -1,8 +1,8 @@
 // ==========================================================================
 // 🎨 CENTRAL BRANDING & DATABASE CONFIGURATION
 // ==========================================================================
-const THEME_PURPLE_REPLACEMENT = "#0ea5e9"; // Deep Sky Blue
-const THEME_PURPLE_HOVER       = "#0284c7"; // Darker Sky Blue
+const THEME_PURPLE_REPLACEMENT = "#ec4899"; // Hot Pink (Gen Z)
+const THEME_PURPLE_HOVER       = "#be185d"; // Deep Magenta (Gen Z)
 const DATABASE_API_URL = "https://king.aarushsketch.workers.dev";
 
 // ==========================================================================
